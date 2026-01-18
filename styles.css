@@ -1,0 +1,686 @@
+/* ===== VARIABLES ===== */
+:root {
+    --primary: #4361ee;
+    --primary-dark: #3a56d4;
+    --secondary: #7209b7;
+    --success: #4cc9f0;
+    --danger: #f72585;
+    --warning: #ff9e00;
+    --light: #f8f9fa;
+    --dark: #212529;
+    --gray: #6c757d;
+    --gray-light: #e9ecef;
+    --border-radius: 10px;
+    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --sidebar-width: 250px;
+    --sidebar-collapsed: 70px;
+}
+
+/* ===== BASE STYLES ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #f8f9fa;
+    color: var(--dark);
+    overflow-x: hidden;
+}
+
+/* ===== NETWORK & FIREBASE STATUS ===== */
+
+
+.firebase-status {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 10px 15px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    z-index: 9997;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    opacity: 0.9;
+}
+
+.firebase-status.connected {
+    background: rgba(40, 167, 69, 0.9);
+    color: white;
+}
+
+.firebase-status.disconnected {
+    background: rgba(255, 193, 7, 0.9);
+    color: #212529;
+}
+
+.firebase-status-content {
+    display: flex;
+    align-items: center;
+}
+
+.firebase-status-mini {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 8px;
+    height: 8px;
+}
+
+.firebase-status-mini.connected {
+    color: #28a745;
+}
+
+.firebase-status-mini.disconnected {
+    color: #ffc107;
+}
+
+/* Loading Overlay Improvements */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    backdrop-filter: blur(5px);
+}
+
+.loading-overlay .spinner-border {
+    width: 3rem;
+    height: 3rem;
+    border-width: 0.25em;
+}
+
+.loading-overlay p {
+    margin-top: 1rem;
+    color: var(--primary);
+    font-weight: 500;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { opacity: 0.6; }
+}
+
+/* ===== LOGIN PAGE ===== */
+.login-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+}
+
+.login-card {
+    border-radius: var(--border-radius);
+    border: none;
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.login-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(45deg, var(--primary), var(--secondary));
+    border-radius: 50%;
+    color: white;
+}
+
+.connection-status {
+    display: flex;
+    justify-content: center;
+}
+
+.connection-status .badge {
+    font-size: 0.75rem;
+    padding: 5px 10px;
+    font-weight: 500;
+}
+
+.connection-status .badge i {
+    font-size: 0.5rem;
+    vertical-align: middle;
+}
+
+.login-card .form-control {
+    border: 2px solid var(--gray-light);
+    border-radius: 8px;
+    padding: 10px 15px;
+    transition: all 0.3s;
+}
+
+.login-card .form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.25);
+}
+
+.login-card .btn-primary {
+    background: linear-gradient(45deg, var(--primary), var(--secondary));
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.login-card .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(67, 97, 238, 0.4);
+}
+
+.login-card .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ===== SIDEBAR ===== */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: var(--sidebar-width);
+    height: 100vh;
+    background: linear-gradient(180deg, var(--primary), var(--primary-dark));
+    color: white;
+    padding: 20px 0;
+    z-index: 100;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-header {
+    padding: 0 20px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+}
+
+.sidebar-header h3 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: white;
+}
+
+.sidebar-divider {
+    border-color: rgba(255, 255, 255, 0.1);
+    margin: 0 20px;
+}
+
+.sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 0;
+}
+
+.sidebar-heading {
+    padding: 0 20px 10px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.7;
+}
+
+.sidebar .nav {
+    padding: 0;
+}
+
+.sidebar .nav-link {
+    padding: 12px 20px;
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    border-left: 3px solid transparent;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sidebar .nav-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border-left-color: var(--success);
+}
+
+.sidebar .nav-link.active {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border-left-color: var(--success);
+}
+
+.sidebar-footer {
+    padding: 20px;
+}
+
+.sidebar-footer .btn {
+    border-radius: 8px;
+    padding: 8px;
+}
+
+/* Sidebar Collapsed State */
+.sidebar.collapsed {
+    width: var(--sidebar-collapsed);
+}
+
+.sidebar.collapsed .sidebar-header h3 span,
+.sidebar.collapsed .sidebar-footer .btn span,
+.sidebar.collapsed .sidebar-heading,
+.sidebar.collapsed .nav-link span {
+    display: none;
+}
+
+.sidebar.collapsed .nav-link {
+    justify-content: center;
+    padding: 12px 0;
+}
+
+.sidebar.collapsed .nav-link i {
+    margin: 0;
+}
+
+/* ===== MAIN CONTENT ===== */
+.main-content {
+    margin-left: var(--sidebar-width);
+    transition: all 0.3s ease;
+    min-height: 100vh;
+    background: #f8f9fa;
+}
+
+.main-content.expanded {
+    margin-left: var(--sidebar-collapsed);
+}
+
+/* Top Navigation */
+.navbar {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+#dataStatus {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+}
+
+#dataStatus .fa-spin {
+    animation: fa-spin 1s infinite linear;
+}
+
+/* ===== STATS CARDS ===== */
+.stats-container .card {
+    border: none;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    transition: transform 0.3s;
+    height: 100%;
+}
+
+.stats-container .card:hover {
+    transform: translateY(-5px);
+}
+
+.stats-container .card.best-student {
+    border-top: 4px solid #28a745;
+}
+
+.stats-container .card.worst-student {
+    border-top: 4px solid #dc3545;
+}
+
+.stats-container .card.attendance-rate {
+    border-top: 4px solid var(--primary);
+}
+
+.stats-container .card i {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.stats-container .card.best-student i {
+    color: #28a745;
+}
+
+.stats-container .card.worst-student i {
+    color: #dc3545;
+}
+
+.stats-container .card.attendance-rate i {
+    color: var(--primary);
+}
+
+/* ===== ATTENDANCE TABLE ===== */
+.attendance-table {
+    font-size: 0.85rem;
+}
+
+.attendance-table thead th {
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 10;
+    font-weight: 600;
+    color: var(--dark);
+    border-bottom: 2px solid var(--gray-light);
+    min-width: 40px;
+}
+
+.attendance-table tbody tr:hover {
+    background-color: rgba(67, 97, 238, 0.05);
+}
+
+.attendance-table td:first-child {
+    font-weight: 500;
+    color: var(--dark);
+    position: sticky;
+    left: 0;
+    background: white;
+    z-index: 5;
+    min-width: 180px;
+}
+
+.attendance-table tr:hover td:first-child {
+    background: rgba(67, 97, 238, 0.05);
+}
+
+.attendance-table td {
+    vertical-align: middle;
+    text-align: center;
+    min-width: 40px;
+}
+
+/* Attendance Dots */
+.dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin: 0 auto;
+}
+
+.dot:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+}
+
+.dot-present {
+    background-color: #28a745;
+    color: white;
+}
+
+.dot-late {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.dot-permission {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.dot-absent {
+    background-color: #dc3545;
+    color: white;
+}
+
+/* Empty cell styling */
+.attendance-table td:not(:first-child):empty {
+    background-color: #f8f9fa;
+}
+
+.attendance-table td:not(:first-child):empty::after {
+    content: "—";
+    color: #adb5bd;
+}
+
+/* Legend */
+.legend {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-right: 15px;
+    margin-bottom: 5px;
+}
+
+.legend-item small {
+    color: var(--gray);
+    font-size: 0.8rem;
+}
+
+/* ===== MODAL ===== */
+.modal-content {
+    border-radius: var(--border-radius);
+    border: none;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.student-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(45deg, var(--primary), var(--secondary));
+    border-radius: 50%;
+    color: white;
+}
+
+.stat-box {
+    border: 1px solid var(--gray-light);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;
+        height: auto;
+        bottom: 0;
+        top: auto;
+        transform: translateY(100%);
+        padding: 10px 0;
+    }
+    
+    .sidebar.show {
+        transform: translateY(0);
+    }
+    
+    .main-content {
+        margin-left: 0;
+        margin-bottom: 70px;
+    }
+    
+    .network-status {
+        font-size: 0.75rem;
+        padding: 6px 0;
+    }
+    
+    .firebase-status {
+        bottom: 80px;
+        right: 10px;
+        font-size: 0.75rem;
+        padding: 8px 12px;
+    }
+    
+    .sidebar.collapsed {
+        width: 100%;
+    }
+    
+    .attendance-table {
+        font-size: 0.75rem;
+    }
+    
+    .dot {
+        width: 20px;
+        height: 20px;
+        font-size: 10px;
+    }
+    
+    .attendance-table td:first-child {
+        min-width: 150px;
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .login-card {
+        padding: 20px !important;
+    }
+    
+    .login-icon {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .attendance-table td:first-child {
+        min-width: 120px;
+        font-size: 0.75rem;
+    }
+    
+    .dot {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .sidebar,
+    .navbar,
+    .btn,
+    .legend,
+    .network-status,
+    .firebase-status,
+    .modal,
+    .card-header small {
+        display: none !important;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+    }
+    
+    .card {
+        border: 1px solid #000 !important;
+        box-shadow: none !important;
+    }
+    
+    .attendance-table td:first-child {
+        position: static !important;
+    }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+.sidebar-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Network Status Animation */
+.network-status {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Firebase Status Animation */
+.firebase-status {
+    animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Connection Status in Login */
+.connection-status .badge {
+    transition: all 0.3s ease;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+    }
+}
+
+.connection-status .badge.bg-warning {
+    animation: pulse-warning 2s infinite;
+}
+
+@keyframes pulse-warning {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(255, 193, 7, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+    }
+}
