@@ -684,3 +684,22 @@ body {
         box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
     }
 }
+/* Pastikan loading overlay bisa dihide */
+.loading-overlay {
+    transition: opacity 0.3s ease;
+}
+
+.loading-overlay[style*="display: none"] {
+    display: none !important;
+}
+
+/* Pastikan elemen terlihat */
+#loginPage, #dashboardPage {
+    min-height: 100vh;
+    display: none;
+}
+
+#loginPage[style*="display: block"],
+#dashboardPage[style*="display: block"] {
+    display: block !important;
+}
