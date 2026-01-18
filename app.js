@@ -14,16 +14,6 @@ const months = [
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
 
-// Status mapping
-const STATUS_MAP = {
-    'Datang': 'present',
-    'Pulang': 'present',
-    'Terlambat': 'late',
-    'Izin': 'permission',
-    'Sakit': 'permission',
-    'Alpha': 'absent'
-};
-
 // ===== DOM ELEMENTS =====
 const loadingOverlay = document.getElementById('loadingOverlay');
 const loginPage = document.getElementById('loginPage');
@@ -32,8 +22,6 @@ const loginForm = document.getElementById('loginForm');
 const loginBtn = document.getElementById('loginBtn');
 const togglePassword = document.getElementById('togglePassword');
 const logoutBtn = document.getElementById('logoutBtn');
-const sidebarToggle = document.getElementById('sidebarToggle');
-const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
 const classTabs = document.getElementById('classTabs');
 const monthSelect = document.getElementById('monthSelect');
 const downloadBtn = document.getElementById('downloadBtn');
@@ -41,65 +29,67 @@ const currentClassName = document.getElementById('currentClassName');
 const totalStudents = document.getElementById('totalStudents');
 const statsContainer = document.getElementById('statsContainer');
 const attendanceTable = document.getElementById('attendanceTable');
-const sidebar = document.getElementById('sidebar');
-const mainContent = document.getElementById('mainContent');
 const dataStatus = document.getElementById('dataStatus');
 
 // ===== INITIALIZATION =====
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("🚀 Aplikasi Absensi Siswa Dimulai");
-    initApp();
+    console.log("🚀 Application Starting...");
+    
+    // Check login status
+    setTimeout(checkLoginStatus, 1500);
 });
 
-async function initApp() {
-    try {
-        // Tunggu Firebase siap
-        await waitForFirebase(2000);
-        
-        // Cek login status
-        const isLoggedIn = localStorage.getItem('attendanceAdminLoggedIn');
-        
-        if (isLoggedIn === 'true') {
-            // Login berhasil
-            showDashboard();
-            initializeDashboard();
-        } else {
-            // Belum login
-            showLogin();
-            initializeLoginPage();
-        }
-        
-    } catch (error) {
-        console.error('Error inisialisasi:', error);
+function checkLoginStatus() {
+    const isLoggedIn = localStorage.getItem('attendanceAdminLoggedIn');
+    
+    if (isLoggedIn === 'true') {
+        // Check Firebase connection first
+        checkFirebaseAndLogin();
+    } else {
         showLogin();
         initializeLoginPage();
+        hideLoading();
     }
 }
 
-// ===== UTILITY FUNCTIONS =====
-function waitForFirebase(timeout = 2000) {
-    return new Promise((resolve) => {
-        const startTime = Date.now();
+async function checkFirebaseAndLogin() {
+    showLoading('Menghubungkan ke database...');
+    
+    // Wait for Firebase to be ready (max 10 seconds)
+    const startTime = Date.now();
+    const maxWaitTime = 10000;
+    
+    while (Date.now() - startTime < maxWaitTime) {
+        if (window.isFirebaseConnected === true) {
+            console.log("✅ Firebase connected, proceeding to dashboard");
+            showDashboard();
+            initializeDashboard();
+            hideLoading();
+            return;
+        }
         
-        const checkInterval = setInterval(() => {
-            if (window.firestoreDb !== undefined) {
-                clearInterval(checkInterval);
-                resolve();
-                return;
-            }
-            
-            if (Date.now() - startTime > timeout) {
-                clearInterval(checkInterval);
-                resolve();
-                return;
-            }
-        }, 100);
-    });
+        if (window.isFirebaseConnected === false) {
+            console.log("❌ Firebase not connected");
+            showError("Database tidak terhubung. Refresh halaman.");
+            hideLoading();
+            return;
+        }
+        
+        // Wait 100ms before checking again
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    // Timeout
+    console.log("⏰ Firebase connection timeout");
+    showError("Koneksi database timeout. Coba refresh.");
+    hideLoading();
 }
 
-function showLoading(message = 'Memuat...') {
+// ===== UTILITY FUNCTIONS =====
+function showLoading(message) {
     if (loadingOverlay) {
-        loadingOverlay.querySelector('p').textContent = message;
+        const text = loadingOverlay.querySelector('p');
+        if (text) text.textContent = message;
         loadingOverlay.style.display = 'flex';
     }
 }
@@ -122,38 +112,20 @@ function showDashboard() {
 
 function showError(message) {
     console.error('Error:', message);
-    
-    // Alert sederhana
-    const alertDiv = document.createElement('div');
-    alertDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed top-0 end-0 m-3';
-    alertDiv.style.zIndex = '9999';
-    alertDiv.style.maxWidth = '300px';
-    alertDiv.innerHTML = `
-        <i class="fas fa-exclamation-circle me-2"></i>
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    document.body.appendChild(alertDiv);
-    
-    setTimeout(() => {
-        if (alertDiv.parentNode) {
-            alertDiv.remove();
-        }
-    }, 5000);
+    alert(message);
 }
 
 function updateDataStatus(status) {
     if (!dataStatus) return;
     
     const statusMap = {
-        'memuat': { text: 'Memuat...', icon: 'fa-spinner fa-spin', color: 'bg-info text-white' },
-        'tersambung': { text: 'Tersambung', icon: 'fa-check', color: 'bg-success text-white' },
-        'data-kosong': { text: 'Belum ada absensi', icon: 'fa-database', color: 'bg-secondary text-white' }
+        'memuat': { text: 'Memuat...', icon: 'fa-spinner fa-spin', color: 'bg-info' },
+        'tersambung': { text: 'Online', icon: 'fa-check', color: 'bg-success' },
+        'error': { text: 'Error', icon: 'fa-exclamation', color: 'bg-danger' }
     };
     
     const config = statusMap[status] || statusMap['memuat'];
-    
-    dataStatus.className = `badge ${config.color} border`;
+    dataStatus.className = `badge ${config.color} text-white border`;
     dataStatus.innerHTML = `<i class="fas ${config.icon} me-1"></i><span>${config.text}</span>`;
 }
 
@@ -163,21 +135,22 @@ function initializeLoginPage() {
     if (togglePassword) {
         togglePassword.addEventListener('click', function() {
             const passwordInput = document.getElementById('password');
-            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-            passwordInput.setAttribute('type', type);
+            const type = passwordInput.type === 'password' ? 'text' : 'password';
+            passwordInput.type = type;
             this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
         });
     }
     
     // Login form
     if (loginForm) {
-        loginForm.addEventListener('submit', handleLogin);
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            handleLogin();
+        });
     }
 }
 
-async function handleLogin(e) {
-    e.preventDefault();
-    
+function handleLogin() {
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
     
@@ -186,7 +159,6 @@ async function handleLogin(e) {
         return;
     }
     
-    // Disable button
     if (loginBtn) {
         loginBtn.disabled = true;
         loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Memproses...';
@@ -194,9 +166,7 @@ async function handleLogin(e) {
     
     // Check credentials
     if (username === 'admin' && password === 'admin123') {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        // Set login state
+        // Save login state
         localStorage.setItem('attendanceAdminLoggedIn', 'true');
         
         // Reset button
@@ -205,9 +175,8 @@ async function handleLogin(e) {
             loginBtn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Masuk';
         }
         
-        // Show dashboard
-        showDashboard();
-        initializeDashboard();
+        // Check Firebase and show dashboard
+        checkFirebaseAndLogin();
         
     } else {
         showError('Username atau password salah');
@@ -228,16 +197,26 @@ function initializeDashboard() {
     initializeClassTabs();
     
     // Event listeners
-    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
-    if (sidebarToggle) sidebarToggle.addEventListener('click', toggleSidebar);
-    if (mobileSidebarToggle) mobileSidebarToggle.addEventListener('click', toggleMobileSidebar);
-    if (monthSelect) monthSelect.addEventListener('change', handleMonthChange);
-    if (downloadBtn) downloadBtn.addEventListener('click', handleDownload);
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function() {
+            if (confirm('Keluar dari aplikasi?')) {
+                localStorage.removeItem('attendanceAdminLoggedIn');
+                showLogin();
+                if (loginForm) loginForm.reset();
+            }
+        });
+    }
+    
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', handleDownload);
+    }
     
     // Load first class
     if (classList.length > 0) {
         selectClass(classList[0]);
     }
+    
+    updateDataStatus('tersambung');
 }
 
 function initializeMonthSelector() {
@@ -255,6 +234,13 @@ function initializeMonthSelector() {
         option.selected = i === currentMonth;
         monthSelect.appendChild(option);
     }
+    
+    monthSelect.addEventListener('change', function() {
+        currentMonth = parseInt(this.value);
+        if (currentClass) {
+            loadClassData(currentClass);
+        }
+    });
 }
 
 function initializeClassTabs() {
@@ -304,7 +290,7 @@ async function selectClass(className) {
             currentClassName.innerHTML = `<i class="fas fa-chalkboard-teacher me-2"></i>Kelas ${className}`;
         }
         
-        // Load data
+        // Load data from Firebase
         await loadClassData(className);
         
         updateDataStatus('tersambung');
@@ -312,8 +298,8 @@ async function selectClass(className) {
         
     } catch (error) {
         console.error('Error memuat kelas:', error);
-        showError('Gagal memuat data kelas');
-        updateDataStatus('data-kosong');
+        showError('Gagal memuat data dari database');
+        updateDataStatus('error');
         hideLoading();
     } finally {
         isLoading = false;
@@ -322,23 +308,28 @@ async function selectClass(className) {
 
 // ===== FIREBASE DATA FUNCTIONS =====
 async function getStudentsByClass(className) {
-    console.log(`📋 Mengambil siswa kelas ${className}...`);
+    console.log(`📋 Mengambil siswa kelas ${className} dari Firebase...`);
     
     try {
         if (!window.firestoreDb) {
-            throw new Error('Firestore tidak tersedia');
+            throw new Error("Firestore database not available");
         }
         
-        // AMBIL SEMUA DATA DULU - Hindari error index
-        const snapshot = await window.firestoreDb.collection('students').get();
+        // Query untuk mendapatkan siswa berdasarkan kelas
+        // Catatan: Query ini memerlukan index jika menggunakan where + orderBy
+        // Jika error index, ubah query menjadi lebih sederhana
+        
+        const snapshot = await window.firestoreDb
+            .collection('students')
+            .where('kelas', '==', className)
+            .get();
         
         if (snapshot.empty) {
-            console.log('📭 Database siswa kosong');
+            console.log(`📭 Tidak ada siswa di kelas ${className}`);
             return [];
         }
         
-        // Proses semua data
-        const allStudents = snapshot.docs.map(doc => {
+        const students = snapshot.docs.map(doc => {
             const data = doc.data();
             return {
                 id: doc.id,
@@ -349,45 +340,53 @@ async function getStudentsByClass(className) {
             };
         });
         
-        // Filter berdasarkan kelas
-        const students = allStudents.filter(student => student.kelas === className);
-        
-        // Urutkan berdasarkan nama
+        // Sort manually in JavaScript
         students.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
         
         console.log(`✅ Ditemukan ${students.length} siswa di kelas ${className}`);
         return students;
         
     } catch (error) {
-        console.error('Error mengambil siswa:', error);
+        console.error('❌ Error mengambil siswa dari Firebase:', error);
         
-        // Jika ada error, tampilkan data dummy untuk testing
-        console.log('⚠️ Menggunakan data dummy untuk preview');
-        return generateDummyStudents(className);
+        // Tampilkan error detail untuk debugging
+        if (error.code === 'failed-precondition') {
+            console.error('⚠️ Perlu buat index di Firebase Console');
+            console.error('Link untuk buat index:', error.message.match(/https:\/\/[^\s]+/)?.[0] || '');
+        }
+        
+        throw error;
     }
 }
 
 async function getAttendanceData(className, month, year) {
-    console.log(`📋 Mengambil data kehadiran...`);
+    console.log(`📋 Mengambil data kehadiran dari Firebase...`);
     
     try {
         if (!window.firestoreDb) {
-            throw new Error('Firestore tidak tersedia');
+            throw new Error("Firestore database not available");
         }
         
+        // Format tanggal untuk query
         const monthStr = (month + 1).toString().padStart(2, '0');
         const yearStr = year.toString();
+        const startDate = `${yearStr}-${monthStr}-01`;
+        const endDate = `${yearStr}-${monthStr}-31`;
         
-        // Ambil semua data attendance
-        const snapshot = await window.firestoreDb.collection('attendance').get();
+        // Query data kehadiran
+        const snapshot = await window.firestoreDb
+            .collection('attendance')
+            .where('kelas', '==', className)
+            .where('date', '>=', startDate)
+            .where('date', '<=', endDate)
+            .get();
         
         if (snapshot.empty) {
-            console.log('📭 Database kehadiran kosong');
+            console.log(`📭 Tidak ada data kehadiran untuk ${className} bulan ${monthStr}`);
             return [];
         }
         
-        // Proses data
-        const allRecords = snapshot.docs.map(doc => {
+        const records = snapshot.docs.map(doc => {
             const data = doc.data();
             return {
                 id: doc.id,
@@ -401,87 +400,15 @@ async function getAttendanceData(className, month, year) {
             };
         });
         
-        // Filter berdasarkan kelas dan bulan
-        const filteredRecords = allRecords.filter(record => {
-            if (record.kelas !== className) return false;
-            if (!record.date) return false;
-            
-            const recordDate = record.date; // Format: "2026-01-17"
-            return recordDate.startsWith(`${yearStr}-${monthStr}`);
-        });
-        
-        console.log(`✅ Ditemukan ${filteredRecords.length} data kehadiran`);
-        return filteredRecords;
+        console.log(`✅ Ditemukan ${records.length} data kehadiran`);
+        return records;
         
     } catch (error) {
-        console.error('Error mengambil kehadiran:', error);
+        console.error('❌ Error mengambil data kehadiran:', error);
         return [];
     }
 }
 
-function generateDummyStudents(className) {
-    // Data dummy untuk preview jika database kosong
-    const dummyNames = [
-        'ADI SANTOSO', 'BUDI WIBOWO', 'CITRA PRATAMA', 'DWI KUSUMA',
-        'ERNA HARTONO', 'FATHUR SUKMA', 'GITA WIDODO', 'HADI SURYANINGRAT',
-        'INTAN PANGESTU', 'JOKO WIRAWAN', 'KARTIKA DEWI', 'LUKMAN HAKIM'
-    ];
-    
-    const students = [];
-    const studentCount = Math.floor(Math.random() * 5) + 10; // 10-15 siswa
-    
-    for (let i = 1; i <= studentCount; i++) {
-        const name = dummyNames[Math.floor(Math.random() * dummyNames.length)];
-        students.push({
-            id: `dummy-${i}`,
-            uid: `00${i.toString().padStart(6, '0')}`,
-            name: name,
-            kelas: className,
-            nohp: `628${Math.floor(1000000000 + Math.random() * 9000000000)}`
-        });
-    }
-    
-    // Urutkan berdasarkan nama
-    return students.sort((a, b) => a.name.localeCompare(b.name));
-}
-
-function processAttendanceData(records, students) {
-    console.log(`🔄 Memproses data kehadiran...`);
-    
-    // Inisialisasi struktur data per siswa
-    const attendanceByStudent = students.map(student => ({
-        studentId: student.uid,
-        studentName: student.name,
-        studentPhone: student.nohp,
-        attendance: {} // Akan diisi per tanggal
-    }));
-    
-    // Kelompokkan data per siswa per tanggal
-    records.forEach(record => {
-        // Cari siswa berdasarkan UID
-        const studentIndex = attendanceByStudent.findIndex(s => s.studentId === record.uid);
-        
-        if (studentIndex !== -1) {
-            const dateStr = record.date;
-            const status = STATUS_MAP[record.status] || 'present';
-            
-            // Simpan data jika belum ada untuk tanggal ini
-            if (!attendanceByStudent[studentIndex].attendance[dateStr]) {
-                attendanceByStudent[studentIndex].attendance[dateStr] = {
-                    status: status,
-                    time: record.time,
-                    originalStatus: record.status,
-                    keterangan: record.keterangan
-                };
-            }
-        }
-    });
-    
-    console.log(`✅ Data diproses untuk ${attendanceByStudent.length} siswa`);
-    return attendanceByStudent;
-}
-
-// ===== LOAD CLASS DATA =====
 async function loadClassData(className) {
     try {
         // Reset data
@@ -492,31 +419,21 @@ async function loadClassData(className) {
         students = await getStudentsByClass(className);
         
         if (students.length === 0) {
-            showNoDataMessage('Tidak ada data siswa di database');
+            showEmptyData('Tidak ada siswa di database untuk kelas ini');
             return;
         }
         
-        // 2. Load data kehadiran
+        // 2. Load data kehadiran dari Firebase
         const attendanceRecords = await getAttendanceData(className, currentMonth, currentYear);
         
         // 3. Proses data kehadiran
-        if (attendanceRecords.length > 0) {
-            attendanceData = processAttendanceData(attendanceRecords, students);
-        } else {
-            // Jika tidak ada data kehadiran, buat struktur kosong
-            attendanceData = students.map(student => ({
-                studentId: student.uid,
-                studentName: student.name,
-                studentPhone: student.nohp,
-                attendance: {} // Kosong karena belum absen
-            }));
-        }
+        const attendanceByStudent = processAttendanceData(attendanceRecords, students);
+        attendanceData = attendanceByStudent;
         
         // 4. Update UI
         updateStats();
         updateAttendanceTable();
         
-        // Update total siswa
         if (totalStudents) {
             totalStudents.textContent = `${students.length} siswa`;
         }
@@ -527,8 +444,44 @@ async function loadClassData(className) {
     }
 }
 
-// ===== UI UPDATE FUNCTIONS =====
-function showNoDataMessage(message) {
+function processAttendanceData(records, students) {
+    // Mapping status
+    const statusMap = {
+        'Datang': 'present',
+        'Pulang': 'present',
+        'Terlambat': 'late',
+        'Izin': 'permission',
+        'Sakit': 'permission',
+        'Alpha': 'absent'
+    };
+    
+    // Initialize structure
+    const attendanceByStudent = students.map(student => ({
+        studentId: student.uid,
+        studentName: student.name,
+        attendance: {}
+    }));
+    
+    // Process records
+    records.forEach(record => {
+        const studentIndex = attendanceByStudent.findIndex(s => s.studentId === record.uid);
+        
+        if (studentIndex !== -1) {
+            const dateStr = record.date;
+            const status = statusMap[record.status] || 'present';
+            
+            attendanceByStudent[studentIndex].attendance[dateStr] = {
+                status: status,
+                time: record.time,
+                originalStatus: record.status
+            };
+        }
+    });
+    
+    return attendanceByStudent;
+}
+
+function showEmptyData(message) {
     if (statsContainer) {
         statsContainer.innerHTML = `
             <div class="col-12">
@@ -545,7 +498,7 @@ function showNoDataMessage(message) {
             <tr>
                 <td colspan="35" class="text-center py-5">
                     <div class="text-muted">
-                        <i class="fas fa-users fa-2x mb-3"></i>
+                        <i class="fas fa-database fa-2x mb-3"></i>
                         <p>${message}</p>
                     </div>
                 </td>
@@ -559,14 +512,27 @@ function showNoDataMessage(message) {
 }
 
 function updateStats() {
-    if (!students.length || !statsContainer) {
-        return;
-    }
+    if (!statsContainer || !students.length) return;
     
-    // Tampilkan statistik sederhana
+    // Calculate basic stats
+    let presentCount = 0;
+    let lateCount = 0;
+    let absentCount = 0;
+    
+    attendanceData.forEach(student => {
+        Object.values(student.attendance).forEach(att => {
+            if (att.status === 'present') presentCount++;
+            else if (att.status === 'late') lateCount++;
+            else if (att.status === 'absent') absentCount++;
+        });
+    });
+    
+    const totalAttendance = presentCount + lateCount + absentCount;
+    const attendanceRate = totalAttendance > 0 ? Math.round((presentCount / totalAttendance) * 100) : 0;
+    
     statsContainer.innerHTML = `
         <div class="col-md-4">
-            <div class="card best-student">
+            <div class="card">
                 <div class="card-body text-center">
                     <i class="fas fa-users text-primary"></i>
                     <h5 class="card-title mt-2">${students.length}</h5>
@@ -576,21 +542,21 @@ function updateStats() {
         </div>
         
         <div class="col-md-4">
-            <div class="card worst-student">
+            <div class="card">
                 <div class="card-body text-center">
-                    <i class="fas fa-calendar-alt text-warning"></i>
-                    <h5 class="card-title mt-2">${months[currentMonth]}</h5>
-                    <p class="card-text text-muted">Bulan</p>
+                    <i class="fas fa-chart-line text-success"></i>
+                    <h5 class="card-title mt-2">${attendanceRate}%</h5>
+                    <p class="card-text text-muted">Kehadiran</p>
                 </div>
             </div>
         </div>
         
         <div class="col-md-4">
-            <div class="card attendance-rate">
+            <div class="card">
                 <div class="card-body text-center">
-                    <i class="fas fa-chalkboard-teacher text-success"></i>
-                    <h5 class="card-title mt-2">${currentClass}</h5>
-                    <p class="card-text text-muted">Kelas</p>
+                    <i class="fas fa-clock text-warning"></i>
+                    <h5 class="card-title mt-2">${lateCount}</h5>
+                    <p class="card-text text-muted">Terlambat</p>
                 </div>
             </div>
         </div>
@@ -598,23 +564,19 @@ function updateStats() {
 }
 
 function updateAttendanceTable() {
-    if (!students.length || !attendanceTable) {
-        return;
-    }
+    if (!attendanceTable || !students.length) return;
     
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     
-    // Bangun tabel
     let tableHTML = `
         <thead>
             <tr>
                 <th style="min-width: 200px;" class="text-start">Nama Siswa</th>
     `;
     
-    // Header tanggal (hari)
     for (let day = 1; day <= daysInMonth; day++) {
         tableHTML += `<th class="text-center" style="min-width: 40px;">
-            <div class="small fw-bold">${day}</div>
+            <div class="small">${day}</div>
         </th>`;
     }
     
@@ -628,7 +590,6 @@ function updateAttendanceTable() {
         <tbody>
     `;
     
-    // Data siswa
     attendanceData.forEach(student => {
         let presentCount = 0;
         let lateCount = 0;
@@ -638,7 +599,6 @@ function updateAttendanceTable() {
         tableHTML += `<tr>`;
         tableHTML += `<td class="fw-semibold text-start">${student.studentName}</td>`;
         
-        // Data kehadiran per hari
         for (let day = 1; day <= daysInMonth; day++) {
             const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
             const attendance = student.attendance[dateStr];
@@ -669,14 +629,13 @@ function updateAttendanceTable() {
                     <span class="dot ${dotClass}">${symbol}</span>
                 </td>`;
             } else {
-                // SEL KOSONG - Belum ada data kehadiran
+                // Empty cell - no attendance data
                 tableHTML += `<td class="text-center">
                     <span class="text-muted">—</span>
                 </td>`;
             }
         }
         
-        // Total per siswa
         tableHTML += `
             <td class="text-center fw-bold text-success">${presentCount}</td>
             <td class="text-center fw-bold text-warning">${lateCount}</td>
@@ -691,24 +650,15 @@ function updateAttendanceTable() {
     attendanceTable.innerHTML = tableHTML;
 }
 
-// ===== EVENT HANDLERS =====
-function handleMonthChange() {
-    currentMonth = parseInt(monthSelect.value);
-    if (currentClass) {
-        loadClassData(currentClass);
-    }
-}
-
 function handleDownload() {
     if (!currentClass || !students.length) {
-        showError('Tidak ada data untuk didownload');
+        alert('Tidak ada data untuk didownload');
         return;
     }
     
     try {
         showLoading('Menyiapkan file Excel...');
         
-        // Data untuk Excel
         const data = [
             ['LAPORAN KEHADIRAN SISWA'],
             [`Kelas: ${currentClass}`],
@@ -717,7 +667,6 @@ function handleDownload() {
             ['Nama Siswa', 'Hadir', 'Terlambat', 'Izin/Sakit', 'Alpha']
         ];
         
-        // Tambahkan data siswa
         attendanceData.forEach(student => {
             let present = 0, late = 0, permission = 0, absent = 0;
             
@@ -731,12 +680,10 @@ function handleDownload() {
             data.push([student.studentName, present, late, permission, absent]);
         });
         
-        // Buat file Excel
         const ws = XLSX.utils.aoa_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Kehadiran');
         
-        // Download
         const fileName = `kehadiran_${currentClass}_${months[currentMonth]}_${currentYear}.xlsx`;
         XLSX.writeFile(wb, fileName);
         
@@ -744,60 +691,31 @@ function handleDownload() {
         
     } catch (error) {
         hideLoading();
-        showError('Gagal membuat file Excel');
         console.error('Download error:', error);
+        alert('Gagal membuat file Excel');
     }
 }
 
-function handleLogout() {
-    if (confirm('Keluar dari aplikasi?')) {
-        localStorage.removeItem('attendanceAdminLoggedIn');
-        showLogin();
-        
-        // Reset form
-        if (loginForm) loginForm.reset();
-        if (loginBtn) {
-            loginBtn.disabled = false;
-            loginBtn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Masuk';
-        }
-    }
-}
-
-function toggleSidebar() {
-    if (sidebar) sidebar.classList.toggle('collapsed');
-    if (mainContent) mainContent.classList.toggle('expanded');
-}
-
-function toggleMobileSidebar() {
-    if (sidebar) sidebar.classList.toggle('show');
-}
-
-// ===== FIREBASE DEBUG =====
-// Fungsi untuk cek koneksi database
-window.checkFirebaseData = async function() {
-    console.log("🔍 Cek data Firebase...");
+// ===== FIREBASE DEBUG FUNCTION =====
+window.debugFirebase = async function() {
+    console.log("🔧 Firebase Debug Info:");
+    console.log("isFirebaseConnected:", window.isFirebaseConnected);
+    console.log("firestoreDb:", window.firestoreDb ? "Available" : "Not available");
     
-    try {
-        // 1. Cek collection students
-        const studentsCol = await window.firestoreDb.collection('students').limit(3).get();
-        console.log(`📚 Students collection: ${studentsCol.size} dokumen`);
-        
-        studentsCol.forEach(doc => {
-            console.log(`  - ${doc.id}:`, doc.data());
-        });
-        
-        // 2. Cek collection attendance
-        const attendanceCol = await window.firestoreDb.collection('attendance').limit(3).get();
-        console.log(`📅 Attendance collection: ${attendanceCol.size} dokumen`);
-        
-        attendanceCol.forEach(doc => {
-            console.log(`  - ${doc.id}:`, doc.data());
-        });
-        
-        return true;
-        
-    } catch (error) {
-        console.error('❌ Error cek data:', error);
-        return false;
+    if (window.firestoreDb) {
+        try {
+            // Test students collection
+            const students = await window.firestoreDb.collection('students').limit(3).get();
+            console.log(`📚 Students collection: ${students.size} documents`);
+            students.forEach(doc => console.log(`  ${doc.id}:`, doc.data()));
+            
+            // Test attendance collection
+            const attendance = await window.firestoreDb.collection('attendance').limit(3).get();
+            console.log(`📅 Attendance collection: ${attendance.size} documents`);
+            attendance.forEach(doc => console.log(`  ${doc.id}:`, doc.data()));
+            
+        } catch (error) {
+            console.error("Debug query error:", error);
+        }
     }
 };
