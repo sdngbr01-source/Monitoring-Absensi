@@ -8,77 +8,133 @@ const firebaseConfig = {
   appId: "1:894029283779:web:e11da705ca20b23aa87d76"
 };
 
+
+// ===== DEBUG: TAMPILKAN CONFIG =====
+console.log("🔧 Firebase Config Loaded");
+console.log("Project ID:", firebaseConfig.projectId);
+console.log("Auth Domain:", firebaseConfig.authDomain);
+
 // ===== INITIALIZE FIREBASE =====
 let firebaseApp;
 let firestoreDb;
-let firebaseAuth;
 let isFirebaseConnected = false;
 
-try {
-    firebaseApp = firebase.initializeApp(firebaseConfig);
-    firestoreDb = firebase.firestore();
-    firebaseAuth = firebase.auth();
-    
-    console.log("✅ Firebase initialized");
-    
-    // Konfigurasi sederhana tanpa persistence yang ribet
+// Function untuk initialize Firebase
+function initializeFirebase() {
     try {
-        // Coba enable persistence tapi tidak terlalu strict
-        firestoreDb.enablePersistence()
-            .catch((err) => {
-                // Ignore persistence errors
-                console.log("ℹ️ Persistence:", err.code);
-            });
-    } catch (err) {
-        // Ignore semua error persistence
-    }
-    
-    // Update status Firebase
-    updateFirebaseStatus(true);
-    
-} catch (error) {
-    console.error("❌ Firebase init error:", error);
-    updateFirebaseStatus(false);
-}
-
-// ===== DATABASE REFERENCES =====
-const getStudentsCollection = () => {
-    return firestoreDb.collection('students');
-};
-
-const getAttendanceCollection = () => {
-    return firestoreDb.collection('attendance');
-};
-
-// ===== SIMPLE STATUS MANAGEMENT =====
-function updateFirebaseStatus(connected) {
-    isFirebaseConnected = connected;
-    
-    // Update mini status di sidebar saja
-    const miniStatusElement = document.getElementById('firebaseStatusMini');
-    
-    if (miniStatusElement) {
-        if (connected) {
-            miniStatusElement.className = 'firebase-status-mini connected';
-            miniStatusElement.innerHTML = '<i class="fas fa-circle fa-xs"></i>';
-            miniStatusElement.title = 'Database terhubung';
-        } else {
-            miniStatusElement.className = 'firebase-status-mini disconnected';
-            miniStatusElement.innerHTML = '<i class="fas fa-circle fa-xs"></i>';
-            miniStatusElement.title = 'Database offline';
+        console.log("🔄 Initializing Firebase...");
+        
+        // Check if Firebase SDK is loaded
+        if (typeof firebase === 'undefined') {
+            console.error("❌ Firebase SDK not loaded!");
+            throw new Error("Firebase SDK not loaded. Check internet connection.");
         }
+        
+        // Initialize Firebase
+        firebaseApp = firebase.initializeApp(firebaseConfig);
+        firestoreDb = firebase.firestore();
+        
+        console.log("✅ Firebase App initialized:", firebaseApp.name);
+        
+        // Enable persistence for offline support
+        firestoreDb.enablePersistence()
+            .then(() => {
+                console.log("💾 Firebase persistence enabled");
+            })
+            .catch((err) => {
+                console.warn("⚠️ Persistence error:", err.code);
+            });
+        
+        // Test connection
+        testFirebaseConnection();
+        
+    } catch (error) {
+        console.error("❌ Firebase initialization failed:", error);
+        
+        // Show error in UI
+        if (document.getElementById('loadingText')) {
+            document.getElementById('loadingText').textContent = 
+                `Firebase Error: ${error.message}. Refresh page or check config.`;
+        }
+        
+        // Retry after 5 seconds
+        setTimeout(initializeFirebase, 5000);
     }
-    
-    // Update window variable
-    window.isFirebaseConnected = isFirebaseConnected;
 }
 
-// ===== HAPUS NETWORK MONITORING =====
-// Hapus semua kode yang menampilkan status internet
-// Tidak perlu listen untuk online/offline events
+// ===== TEST FIREBASE CONNECTION =====
+async function testFirebaseConnection() {
+    try {
+        console.log("🔍 Testing Firebase connection...");
+        
+        // Simple test - try to access Firestore
+        const testCollection = firestoreDb.collection('students');
+        const testQuery = testCollection.limit(1);
+        
+        // Use timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Connection timeout')), 10000);
+        });
+        
+        const connectionPromise = testQuery.get();
+        
+        await Promise.race([connectionPromise, timeoutPromise]);
+        
+        isFirebaseConnected = true;
+        console.log("✅ Firebase connection successful!");
+        
+        // Update global variable
+        window.isFirebaseConnected = true;
+        window.firestoreDb = firestoreDb;
+        
+        // Hide loading if still showing
+        setTimeout(() => {
+            if (document.getElementById('loadingOverlay')) {
+                document.getElementById('loadingOverlay').style.display = 'none';
+            }
+        }, 1000);
+        
+    } catch (error) {
+        console.error("❌ Firebase connection test failed:", error);
+        isFirebaseConnected = false;
+        window.isFirebaseConnected = false;
+        
+        // Retry connection
+        setTimeout(testFirebaseConnection, 3000);
+    }
+}
 
-// Export Firebase objects
+// ===== DATABASE FUNCTIONS =====
+function getStudentsCollection() {
+    if (!firestoreDb) {
+        throw new Error("Firestore not initialized");
+    }
+    return firestoreDb.collection('students');
+}
+
+function getAttendanceCollection() {
+    if (!firestoreDb) {
+        throw new Error("Firestore not initialized");
+    }
+    return firestoreDb.collection('attendance');
+}
+
+// ===== EXPORT TO WINDOW =====
 window.firebaseApp = firebaseApp;
 window.firestoreDb = firestoreDb;
-window.firebaseAuth = firebaseAuth;
 window.isFirebaseConnected = isFirebaseConnected;
+window.getStudentsCollection = getStudentsCollection;
+window.getAttendanceCollection = getAttendanceCollection;
+
+// ===== INITIALIZE ON LOAD =====
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("📱 DOM Loaded - Initializing Firebase");
+    setTimeout(initializeFirebase, 100);
+});
+
+// Global error handler for Firebase
+window.addEventListener('error', function(e) {
+    if (e.message.includes('firebase') || e.message.includes('Firebase')) {
+        console.error("Global Firebase error:", e);
+    }
+});
